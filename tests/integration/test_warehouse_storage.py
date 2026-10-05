@@ -142,3 +142,32 @@ def test_s3_round_trip_copy_list_delete(fresh_stack: Stack) -> None:
     assert store.delete_prefix("incoming/") == 2
     assert store.list_keys("incoming/") == []
     assert store.list_keys("quarantine/") == ["quarantine/a/1.json"]
+
+
+@pytest.mark.integration
+def test_concurrent_first_start_does_not_collide_on_schema_creation(base_settings) -> None:  # type: ignore[no-untyped-def]
+    """Eight workers start on an empty database at the same moment, as the mapped ingest tasks do.
+
+    Without the advisory lock this raised UniqueViolation in most attempts.
+    """
+    from pipeline.warehouse import Warehouse
+    from tests.services import create_database, drop_database
+
+    errors: list[str] = []
+    for trial in range(4):
+        name = f"race_{trial}_{threading.get_ident()}"
+        dsn = create_database(base_settings.warehouse_dsn, name)
+
+        def worker(dsn: str = dsn) -> None:
+            try:
+                Warehouse(dsn).ensure_schema()
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"{type(exc).__name__}: {exc}")
+
+        threads = [threading.Thread(target=worker) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        drop_database(base_settings.warehouse_dsn, name)
+    assert errors == []

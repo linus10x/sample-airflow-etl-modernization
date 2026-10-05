@@ -10,6 +10,9 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+# Arbitrary constant: the key every caller of ensure_schema takes the advisory lock on.
+DDL_LOCK_KEY = 727001
+
 
 class Warehouse:
     def __init__(self, dsn: str) -> None:
@@ -21,6 +24,9 @@ class Warehouse:
     def ensure_schema(self) -> None:
         ddl = resources.files("pipeline").joinpath("sql/ddl.sql").read_text(encoding="utf-8")
         with self._connect() as conn:
+            # Several workers call this at once on a fresh database. Without the lock, two
+            # "create schema if not exists" statements can both pass the check and one fails.
+            conn.execute("select pg_advisory_xact_lock(%s)", (DDL_LOCK_KEY,))
             conn.execute(ddl)
 
     def fetch_all(self, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
