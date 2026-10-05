@@ -1,0 +1,32 @@
+# secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+out/live/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# build output and scratch
+data/generated/
+out/
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+node_modules/
+logs/
+tmp/
+*.log
+
+# OS junk
+.DS_Store
