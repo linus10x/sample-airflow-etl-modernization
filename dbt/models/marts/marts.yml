@@ -1,0 +1,101 @@
+version: 2
+
+models:
+  - name: dim_products
+    columns:
+      - name: product_key
+        data_tests: [unique, not_null]
+      - name: vendor
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [vendor_a, vendor_b, vendor_c]
+      - name: unit_cost
+        data_tests: [not_null]
+
+  - name: crosswalk_sku
+    columns:
+      - name: match_method
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [manual_override, exact_normalized, unmatched]
+      - name: product_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_products')
+                field: product_key
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [vendor, sku_as_entered]
+
+  - name: fct_order_lines
+    columns:
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_orders')
+                field: order_id
+      - name: match_method
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [manual_override, exact_normalized, unmatched]
+      - name: product_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_products')
+                field: product_key
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [order_id, line_no]
+      - no_dropped_lines:
+          arguments:
+            source_model: ref('stg_order_lines')
+            keys: [order_id, line_no]
+      - unmatched_lines_are_labelled
+
+  - name: fct_orders
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: order_total
+        data_tests: [not_null]
+
+  - name: sku_match_summary
+    columns:
+      - name: match_method
+        data_tests: [unique, not_null]
+
+seeds:
+  - name: sku_overrides
+    description: Hand-made mappings for SKUs that normalization cannot resolve (retired codes).
+    config:
+      column_types:
+        vendor: text
+        sku_norm_entered: text
+        product_key: text
+        note: text
+    columns:
+      - name: product_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_products')
+                field: product_key
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [vendor, sku_norm_entered]
+
+  - name: sku_normalization_cases
+    description: Shared cases. The Python normalizer and the SQL macro are both checked against it.

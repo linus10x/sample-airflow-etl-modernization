@@ -1,0 +1,13 @@
+# Connection comes from the environment; the defaults match docker-compose.yml seen from the host.
+retail:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_HOST', 'localhost') }}"
+      port: "{{ env_var('DBT_PORT', '5433') | as_number }}"
+      user: "{{ env_var('DBT_USER', 'warehouse') }}"
+      password: "{{ env_var('DBT_PASSWORD', 'warehouse') }}"
+      dbname: "{{ env_var('DBT_DBNAME', 'warehouse') }}"
+      schema: public
+      threads: 4

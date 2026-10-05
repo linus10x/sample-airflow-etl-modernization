@@ -30,3 +30,6 @@ tmp/
 
 # OS junk
 .DS_Store
+*.egg-info/
+docker/airflow/auth/
+junit*.xml

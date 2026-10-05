@@ -1,0 +1,184 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "sample/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REQUIRE_SERVICES: "1"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy
+
+  tests:
+    name: unit and integration tests with coverage gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: cp .env.example .env
+      - name: Start Postgres and MinIO
+        run: |
+          docker compose up -d postgres minio
+          for i in $(seq 1 40); do
+            [ "$(docker compose ps postgres --format '{{.Health}}')" = "healthy" ] && break; sleep 2
+          done
+      - name: Tests with the 85 percent coverage gate
+        run: >
+          pytest -m "not e2e and not dags" --cov --cov-report=xml --cov-report=term-missing
+          --cov-fail-under=85 --junitxml=junit-unit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-results
+          path: |
+            junit-unit.xml
+            coverage.xml
+
+  dags:
+    name: DAG integrity tests in the Airflow image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env && mkdir -p out && chmod 777 out
+      - run: docker compose build airflow
+      - name: Run the DAG tests
+        run: >
+          docker compose run --rm --no-deps --entrypoint python airflow
+          -m pytest tests/dags -q -p no:cacheprovider --junitxml=out/junit-dags.xml
+        env:
+          AIRFLOW_UID: "50000"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dags-results
+          path: out/junit-dags.xml
+
+  e2e:
+    name: end-to-end through Airflow and dbt
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: mkdir -p out && chmod 777 out
+      - name: Start the stack
+        run: make up
+      - name: End-to-end tests
+        timeout-minutes: 20
+        run: pytest -m e2e -v --junitxml=out/junit-e2e.xml
+      - if: failure()
+        run: docker compose logs --tail 200 airflow
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: out/junit-e2e.xml
+
+  demo-and-images:
+    name: one-command demo with images and report
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -e ".[dev]"
+      - run: playwright install --with-deps chromium
+      - run: mkdir -p out && chmod 777 out
+      - name: make demo
+        run: make demo OPEN=true
+      - name: Render the portfolio images
+        run: make images
+      - if: failure()
+        run: docker compose logs --tail 200 airflow
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-outputs
+          path: |
+            docs/portfolio/img-*.png
+            out/health_report.html
+            out/report_facts.json
+            out/dbt_run_results.json
+
+  secret-scan:
+    name: gitleaks over full history
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
+            detect --source /repo --log-opts="--all" --redact --verbose
+
+  portfolio:
+    name: case study PDF and artifact checks
+    needs: [tests, dags, e2e, demo-and-images]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y tesseract-ocr poppler-utils
+      - run: pip install -e ".[dev]"
+      - run: playwright install --with-deps chromium
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Place images and gather facts from test and build output
+        run: |
+          mkdir -p out
+          cp artifacts/demo-outputs/docs/portfolio/img-*.png docs/portfolio/ 2>/dev/null \
+            || cp artifacts/demo-outputs/img-*.png docs/portfolio/
+          cp artifacts/demo-outputs/out/*.json artifacts/demo-outputs/out/*.html out/ 2>/dev/null \
+            || cp artifacts/demo-outputs/*.json artifacts/demo-outputs/*.html out/
+          python scripts/collect_facts.py \
+            --junit artifacts/unit-results/junit-unit.xml artifacts/dags-results/junit-dags.xml \
+                    artifacts/e2e-results/junit-e2e.xml \
+            --coverage artifacts/unit-results/coverage.xml \
+            --dbt out/dbt_run_results.json \
+            --report-facts out/report_facts.json \
+            --out out/ci-facts.json
+      - run: make pdf
+      - run: python scripts/check_artifacts.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portfolio
+          path: |
+            docs/portfolio/img-*.png
+            docs/portfolio/case-study.pdf
+            out/ci-facts.json

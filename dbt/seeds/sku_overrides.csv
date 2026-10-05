@@ -1,0 +1,13 @@
+vendor,sku_norm_entered,product_key,note
+vendor_a,leg1001,vendor_a:10545,"retired legacy SKU, mapped by hand"
+vendor_a,leg1004,vendor_a:10303,"retired legacy SKU, mapped by hand"
+vendor_a,leg1008,vendor_a:10422,"retired legacy SKU, mapped by hand"
+vendor_a,leg1010,vendor_a:10307,"retired legacy SKU, mapped by hand"
+vendor_b,leg1000,vendor_b:10475y,"retired legacy SKU, mapped by hand"
+vendor_b,leg1003,vendor_b:10602,"retired legacy SKU, mapped by hand"
+vendor_b,leg1005,vendor_b:10150z,"retired legacy SKU, mapped by hand"
+vendor_b,leg1007,vendor_b:10576,"retired legacy SKU, mapped by hand"
+vendor_b,leg1009,vendor_b:10226,"retired legacy SKU, mapped by hand"
+vendor_b,leg1011,vendor_b:10593,"retired legacy SKU, mapped by hand"
+vendor_c,leg1002,vendor_c:10641,"retired legacy SKU, mapped by hand"
+vendor_c,leg1006,vendor_c:10335,"retired legacy SKU, mapped by hand"
