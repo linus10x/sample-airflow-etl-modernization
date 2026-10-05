@@ -25,7 +25,6 @@ Our Python ETL loads vendor JSON files from S3, and it fails quietly whenever a 
 Week one: read the current job and its recent failures, list each feed and what it promises, then move one feed end to end into Postgres with a contract, a quarantine and a re-run check. Week two: add the remaining feeds, the dbt models and tests, backfill, and the health report, then run old and new side by side and compare the totals before anything is switched off.
 
 ## Background
-- 10+ years of hands-on Python and Airflow.
-- At Broadridge's wealth-management business I owned client onboarding and the canonical Family/Member/Entity/Account data model.
+- At Broadridge's wealth-management business I owned client onboarding and the canonical Family/Member/Entity/Account data model, so matching one entity across systems is familiar ground.
 
 footer: Kunjar Bhaduri. I lead and deliver the work myself, using frontier AI tooling to move fast.
