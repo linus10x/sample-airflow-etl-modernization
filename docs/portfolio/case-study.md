@@ -19,7 +19,7 @@ Our Python ETL loads vendor JSON files from S3, and it fails quietly whenever a 
 - In the end-to-end run, the day-5 vendor file with a renamed field is quarantined and the other three feeds load.
 - Re-running files that already loaded adds zero rows.
 - Order totals from the new tables equal the old script's totals for all {{orders}} orders.
-- {{match_pct}}% of order lines tie to a product in this run. The rest stay in the table, labelled unmatched.
+- {{match_pct}}% of order lines tie to a product in this run. The rest stay in the table, labeled unmatched.
 
 ## How a client engagement would run
 Week one: read the current job and its recent failures, list each feed and what it promises, then move one feed end to end into Postgres with a contract, a quarantine and a re-run check. Week two: add the remaining feeds, the dbt models and tests, backfill, and the health report, then run old and new side by side and compare the totals before anything is switched off.
