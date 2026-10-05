@@ -70,6 +70,7 @@ services:
       - ./pipeline:/opt/airflow/project/pipeline
       - ./dbt:/opt/airflow/project/dbt
       - ./tests:/opt/airflow/project/tests
+      - ./pyproject.toml:/opt/airflow/project/pyproject.toml:ro
       - ./docker/airflow/auth:/opt/airflow/auth
       - ./out:/opt/airflow/project/out
     healthcheck:
