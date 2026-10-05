@@ -90,7 +90,8 @@ jobs:
       - name: Start the stack
         run: make up
       - name: End-to-end tests
-        run: pytest -m e2e -q --junitxml=out/junit-e2e.xml
+        timeout-minutes: 20
+        run: pytest -m e2e -v --junitxml=out/junit-e2e.xml
       - if: failure()
         run: docker compose logs --tail 200 airflow
       - uses: actions/upload-artifact@v4

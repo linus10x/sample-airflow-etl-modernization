@@ -15,6 +15,7 @@ from tests.services import LoadedStack
 
 ROOT = Path(__file__).resolve().parents[2]
 DBT = Path(sys.executable).parent / "dbt"
+DBT_TIMEOUT_SECONDS = 300
 
 
 @dataclass(frozen=True)
@@ -29,25 +30,56 @@ class DbtRunner:
     env: dict[str, str]
     target: Path
 
+    def _db_activity(self) -> str:
+        """What the database was doing when dbt stalled: sessions and who waits on whom."""
+        import psycopg
+
+        try:
+            with psycopg.connect(
+                host=self.env["DBT_HOST"],
+                port=self.env["DBT_PORT"],
+                user=self.env["DBT_USER"],
+                password=self.env["DBT_PASSWORD"],
+                dbname=self.env["DBT_DBNAME"],
+                connect_timeout=5,
+            ) as conn:
+                sessions = conn.execute(
+                    "select pid, state, wait_event_type, wait_event, left(query, 90) "
+                    "from pg_stat_activity where datname = current_database()"
+                ).fetchall()
+                locks = conn.execute(
+                    "select pid, locktype, mode, granted from pg_locks where not granted"
+                ).fetchall()
+            return f"sessions: {sessions}\nungranted locks: {locks}"
+        except Exception as exc:  # noqa: BLE001
+            return f"could not read database activity: {exc}"
+
     def __call__(self, *args: str) -> DbtResult:
-        proc = subprocess.run(
-            [
-                str(DBT),
-                *args,
-                "--profiles-dir",
-                str(ROOT / "dbt"),
-                "--project-dir",
-                str(ROOT / "dbt"),
-                "--target-path",
-                str(self.target),
-                "--log-path",
-                str(self.target / "logs"),
-            ],
-            capture_output=True,
-            text=True,
-            env=self.env,
-            cwd=ROOT,
-        )
+        try:
+            proc = subprocess.run(
+                [
+                    str(DBT),
+                    *args,
+                    "--profiles-dir",
+                    str(ROOT / "dbt"),
+                    "--project-dir",
+                    str(ROOT / "dbt"),
+                    "--target-path",
+                    str(self.target),
+                    "--log-path",
+                    str(self.target / "logs"),
+                ],
+                capture_output=True,
+                text=True,
+                env=self.env,
+                cwd=ROOT,
+                timeout=DBT_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            pytest.fail(
+                f"dbt {' '.join(args)} timed out after {DBT_TIMEOUT_SECONDS}s.\n"
+                f"stdout tail: {(exc.stdout or b'')[-1500:]!r}\n{self._db_activity()}"
+            )
         results: dict[str, str] = {}
         run_results = self.target / "run_results.json"
         if run_results.exists():
