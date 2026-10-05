@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: stg_loaded_records
+    columns:
+      - name: feed
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [vendor_a, vendor_b, vendor_c, orders]
+      - name: file_checksum
+        data_tests: [not_null]
+
+  - name: stg_vendor_products
+    columns:
+      - name: vendor
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [vendor_a, vendor_b, vendor_c]
+      - name: vendor_sku
+        data_tests: [not_null]
+      - name: unit_cost
+        data_tests: [not_null]
+
+  - name: stg_orders
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+
+  - name: stg_order_lines
+    columns:
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: qty
+        data_tests: [not_null]

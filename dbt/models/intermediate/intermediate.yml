@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: int_order_lines_normalized
+    columns:
+      - name: sku_norm
+        data_tests: [not_null]
+  - name: int_vendor_products_latest
+
+unit_tests:
+  - name: normalize_sku_handles_each_vendor_format
+    description: The macro strips case, separators, the vendor prefix and leading zeros.
+    model: int_order_lines_normalized
+    given:
+      - input: ref('stg_order_lines')
+        rows:
+          - {order_id: O-1, line_no: 1, vendor: vendor_a, sku_as_entered: "AC-10023", qty: 1, unit_price: 10}
+          - {order_id: O-1, line_no: 2, vendor: vendor_a, sku_as_entered: "ac 10023", qty: 1, unit_price: 10}
+          - {order_id: O-1, line_no: 3, vendor: vendor_b, sku_as_entered: "b_10023_x", qty: 1, unit_price: 10}
+          - {order_id: O-1, line_no: 4, vendor: vendor_b, sku_as_entered: "10023X", qty: 1, unit_price: 10}
+          - {order_id: O-1, line_no: 5, vendor: vendor_c, sku_as_entered: "C0010023", qty: 1, unit_price: 10}
+          - {order_id: O-1, line_no: 6, vendor: vendor_c, sku_as_entered: "10023", qty: 1, unit_price: 10}
+    expect:
+      rows:
+        - {order_id: O-1, line_no: 1, sku_norm: "10023"}
+        - {order_id: O-1, line_no: 2, sku_norm: "10023"}
+        - {order_id: O-1, line_no: 3, sku_norm: "10023x"}
+        - {order_id: O-1, line_no: 4, sku_norm: "10023x"}
+        - {order_id: O-1, line_no: 5, sku_norm: "10023"}
+        - {order_id: O-1, line_no: 6, sku_norm: "10023"}
+
+  - name: normalize_sku_does_not_cross_vendor_prefixes
+    description: A "c" at the start of a vendor_a SKU is not a vendor_c prefix, so it stays.
+    model: int_order_lines_normalized
+    given:
+      - input: ref('stg_order_lines')
+        rows:
+          - {order_id: O-2, line_no: 1, vendor: vendor_a, sku_as_entered: "C-77", qty: 1, unit_price: 1}
+          - {order_id: O-2, line_no: 2, vendor: vendor_c, sku_as_entered: "C-77", qty: 1, unit_price: 1}
+    expect:
+      rows:
+        - {order_id: O-2, line_no: 1, sku_norm: "c77"}
+        - {order_id: O-2, line_no: 2, sku_norm: "77"}

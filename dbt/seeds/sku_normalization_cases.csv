@@ -1,0 +1,16 @@
+vendor,raw,expected
+vendor_a,AC-10023,10023
+vendor_a,ac 10023,10023
+vendor_a,10023,10023
+vendor_a,Ac.10023,10023
+vendor_a,AC-00123,123
+vendor_a,LEG-1001,leg1001
+vendor_b,b_10023_x,10023x
+vendor_b,B 10023 X,10023x
+vendor_b,10023x,10023x
+vendor_b,b_00045,45
+vendor_c,C0010023,10023
+vendor_c,c0010023,10023
+vendor_c,10023,10023
+vendor_c,0010023,10023
+vendor_c,C 0010023,10023

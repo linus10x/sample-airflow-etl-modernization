@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: Records exactly as received, one JSONB document per record. Written only by the ingest DAG.
+    tables:
+      - name: records
+  - name: ops
+    schema: ops
+    description: The file manifest. One row per distinct file content, loaded or quarantined.
+    tables:
+      - name: file_manifest
