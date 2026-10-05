@@ -28,7 +28,7 @@ jobs:
       - run: mypy
 
   tests:
-    name: unit and integration tests, coverage gate
+    name: unit and integration tests with coverage gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +100,7 @@ jobs:
           path: out/junit-e2e.xml
 
   demo-and-images:
-    name: one-command demo, images and report
+    name: one-command demo with images and report
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -132,7 +132,7 @@ jobs:
             out/dbt_run_results.json
 
   secret-scan:
-    name: gitleaks, full history
+    name: gitleaks over full history
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
