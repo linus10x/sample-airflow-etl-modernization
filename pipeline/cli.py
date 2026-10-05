@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 import uuid
@@ -88,10 +89,19 @@ def cmd_freshness(args: argparse.Namespace, settings: Settings) -> int:
 def cmd_report(args: argparse.Namespace, settings: Settings) -> int:
     from pipeline.report import collect, render_html
 
-    html = render_html(collect(Warehouse(settings.warehouse_dsn)))
+    data = collect(Warehouse(settings.warehouse_dsn))
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(html, encoding="utf-8")
+    args.out.write_text(render_html(data), encoding="utf-8")
     print(f"wrote {args.out}")
+    if args.facts:
+        args.facts.write_text(
+            json.dumps(
+                {"mart_counts": data.mart_counts, "match_rate_pct": data.match_rate_pct},
+                indent=2,
+            )
+            + "\n"
+        )
+        print(f"wrote {args.facts}")
     return 0
 
 
@@ -123,6 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     rep = sub.add_parser("report", help="render the pipeline health report")
     rep.add_argument("--out", type=Path, default=Path("out/health_report.html"))
+    rep.add_argument("--facts", type=Path, help="also write the headline numbers as JSON")
     rep.set_defaults(func=cmd_report)
     return parser
 

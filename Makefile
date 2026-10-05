@@ -4,6 +4,7 @@ VENV := .venv
 PY := $(VENV)/bin/python
 export AIRFLOW_UID ?= $(shell id -u)
 COMPOSE := docker compose
+OPEN ?= open
 AF := $(COMPOSE) exec -T airflow airflow
 
 .PHONY: help setup up down clean data test test-unit test-dags test-e2e lint typecheck dbt-build \
@@ -75,15 +76,17 @@ demo: up data ## start everything, load 30 days through Airflow, build the marts
 	scripts/wait_for_runs.sh ingest_vendor_files
 	$(AF) dags trigger transform
 	scripts/wait_for_runs.sh transform
+	mkdir -p out
+	$(COMPOSE) exec -T airflow cat /tmp/dbt-target/run_results.json > out/dbt_run_results.json
 	$(MAKE) report
 	@echo
 	@echo "Airflow UI:    http://localhost:8080  (login in .env.example)"
 	@echo "Health report: out/health_report.html"
-	-@open out/health_report.html 2>/dev/null || true
-	-@open http://localhost:8080 2>/dev/null || true
+	-@$(OPEN) out/health_report.html 2>/dev/null || true
+	-@$(OPEN) http://localhost:8080 2>/dev/null || true
 
 report: $(VENV)/bin/activate ## render out/health_report.html from the ops and marts schemas
-	$(PY) -m pipeline.cli report --out out/health_report.html
+	$(PY) -m pipeline.cli report --out out/health_report.html --facts out/report_facts.json
 
 images: $(VENV)/bin/activate ## render the three portfolio images (needs a finished make demo)
 	$(PY) scripts/make_images.py

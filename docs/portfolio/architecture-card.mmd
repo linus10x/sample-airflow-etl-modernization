@@ -1,0 +1,11 @@
+flowchart TB
+  V["Vendor JSON drops<br/>3 vendors + orders export"] --> M[("S3 bucket<br/>(MinIO locally)")]
+  M --> D["Airflow: ingest_vendor_files<br/>hash, check contract, load"]
+  D -->|"bad file"| Q[("quarantine/<br/>file + reason")]
+  D -->|"good file"| R[("Postgres<br/>raw.records + ops.file_manifest")]
+  R --> dbt
+  subgraph dbt["dbt (run by the transform DAG)"]
+    direction LR
+    S["staging"] --> I["intermediate"] --> X["SKU crosswalk"] --> MA["marts"]
+  end
+  dbt --> H["Pipeline health report<br/>freshness, rejects, SKU match rate"]
