@@ -48,7 +48,7 @@ jobs:
         run: >
           pytest -m "not e2e and not dags" --cov --cov-report=xml --cov-report=term-missing
           --cov-fail-under=85 --junitxml=junit-unit.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: unit-results
@@ -69,7 +69,7 @@ jobs:
           -m pytest tests/dags -q -p no:cacheprovider --junitxml=out/junit-dags.xml
         env:
           AIRFLOW_UID: "50000"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: dags-results
@@ -94,7 +94,7 @@ jobs:
         run: pytest -m e2e -v --junitxml=out/junit-e2e.xml
       - if: failure()
         run: docker compose logs --tail 200 airflow
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-results
@@ -122,7 +122,7 @@ jobs:
         run: make images
       - if: failure()
         run: docker compose logs --tail 200 airflow
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: demo-outputs
@@ -175,7 +175,7 @@ jobs:
             --out out/ci-facts.json
       - run: make pdf
       - run: python scripts/check_artifacts.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: portfolio
           path: |
