@@ -156,7 +156,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y tesseract-ocr poppler-utils
       - run: pip install -e ".[dev]"
       - run: playwright install --with-deps chromium
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Place images and gather facts from test and build output
